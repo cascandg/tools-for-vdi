@@ -1,0 +1,74 @@
+
+Port scans:
+https://www.sans.org/blog/pen-test-poster-white-board-powershell-built-in-port-scanner/
+
+
+Methods Covered in this Section
+PowerShell port scanner:
+
+1..1024 | % {echo ((new-object Net.Sockets.TcpClient).Connect("10.0.0.100",$_)) "Port $_ is open!"} 2>$null
+Test-Netconnection scan a range of IPs for a single port:
+
+foreach ($ip in 1..20) {Test-NetConnection -Port 80 -InformationLevel "Detailed" 192.168.1.$ip}
+PS IP range & port range scanner:
+
+1..20 | % { $a = $_; 1..1024 | % {echo ((new-object Net.Sockets.TcpClient).Connect("10.0.0.$a",$_)) "Port $_ is open!"} 2>$null}
+PS test egress filtering:
+
+1..1024 | % {echo ((new-object Net.Sockets.TcpClient).Connect("allports.exposed",$_)) "Port $_ is open!" } 2>$null
+To create a PowerShell port scanner in one line we need to combine three distinct components. Creating a range of objects, looping through each object, and outputting information for each to the screen. In the case of PowerShell we can make use of its object oriented nature to facilitate this process.
+
+PowerShell port scanner:
+
+1..1024 | % {echo ((new-object Net.Sockets.TcpClient).Connect("10.0.0.100",$_)) "Port $_ is open!"} 2>$null
+powershell
+Command Breakdown
+1..1024 | % {echo ((new-object Net.Sockets.TcpClient).Connect("10.0.0.100",$_)) "Port $_ is open!"} 2>$null
+<pre>1. 1..1024 - Creates a range of variables between 1..1024</pre>
+2. | - The pipe operator passes objects into the loop
+3. % - The % operator in PowerShell is an alias for foreach-object, and is used to start a loop. 
+The loop executes the content between {} in sequence
+4. echo - Print the following output to the screen
+5. new-object Net.Sockets.TcpClient - Instantiates an instance of the .Net TcpClient class, allowing us to make socket connections to TCP ports
+6. .Connect("10.0.0.100",$_)) - Call the Connect function on the TcpClient class with arguments 10.0.0.100 and port $_. $_ is a variable that means current object. 
+The current object relates to number (1..1024) that the loop is currently on.
+7. "Port $_ is open!") - This prints Port # is open! when the program finds an open port.
+8. 2>$null - This tells PowerShell not to display any errors encountered
+The range above scans the 1024 low number ports, but it can easily be adjusted ie (22..53), (8000..9000), etc.
+
+Another method available from within PowerShell is the "Test-NetConnection"  command which can dump extended useful information and is very similar:
+
+Test-Netconnection scan a range of IPs for a single port:
+foreach ($ip in 1..20) {Test-NetConnection -Port 80 -InformationLevel "Detailed" 192.168.1.$ip}
+builtinportscanner_03-1024x412.png
+A major downside to the Test-NetConnection option is that it was not introduced until PowerShell version 4.0.
+
+Command Breakdown
+foreach ($ip in 1..20) {Test-NetConnection -Port 80 -InformationLevel "Detailed" 192.168.1.$ip}
+1. foreach ($ip in 1..20) {} - Loop through numbers 1 to 20
+2. Test-NetConnection - Test-NetConnection is a utility for testing different types of network connectivity.
+3. -Port 80 - Check the availability of port 80
+4. -InformationLevel "Detailed" - Provide detailed output information
+5. 192.168.1.$ip - Attempt to connect to port 80 against the listed IP address. 
+The $ip variable loops from 1-20 in this example.
+Building a scanner that iterates through systems and ports is possible as well:
+
+PS IP range & port range scanner:
+
+1..20 | % { $a = $_; 1..1024 | % {echo ((new-object Net.Sockets.TcpClient).Connect("10.0.0.$a",$_)) "Port $_ is open!"} 2>$null}
+builtinportscanner_04.png
+This version of the command will scan IP addresses 10.0.0.1-20  and ports 1-1024. Be advised, it may take a while to complete. A more efficient alternative might be to specify the ports to look for manually. Like this:
+
+PS IP range & port range scanner v2:
+
+1..20 | % { $a = $_; write-host "------"; write-host "10.0.0.$a"; 22,53,80,445 | % {echo ((new-object Net.Sockets.TcpClient).Connect("10.0.0.$a",$_)) "Port $_ is open!"} 2>$null}
+builtinportscanner_05.png
+
+Bonus Command - Testing Egress Filtering
+Many secure environments enable egress filtering controls to limit outbound protocol access to necessary services. This is one of the reasons it is advantageous to leverage HTTP/HTTPS/DNS channels where possible however, when in need of identifying alternative outbound access we can use PowerShell internally to evaluate egress filters on the network firewall.
+
+PS test egress filtering:
+
+1..1024 | % {echo ((new-object Net.Sockets.TcpClient).Connect("allports.exposed",$_)) "Port $_ is open" } 2>$null
+builtinportscanner_06.png
+For more information on PowerShell egress testing Beau Bullock with Black Hills Information Security has a detailed write-up here: http://www.blackhillsinfosec.com/?p=4811
